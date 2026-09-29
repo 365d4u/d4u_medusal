@@ -1,0 +1,25 @@
+const {chromium}=require('playwright'),fs=require('fs'),assert=require('node:assert/strict');
+(async()=>{
+ const base='https://testmedusa.365d4u.com',b=await chromium.launch({headless:true}),ctx=await b.newContext(),p=await ctx.newPage(),errors=[];
+ p.on('pageerror',e=>errors.push(e.message));
+ await p.goto(base+'/customer-says/?rvpage=2',{waitUntil:'domcontentloaded'});
+ const second=await p.locator('.review-text').first().textContent();assert.equal(await p.locator('.review-item').count(),20);
+ await p.goto(base+'/customer-says/',{waitUntil:'domcontentloaded'});assert.notEqual(await p.locator('.review-text').first().textContent(),second);
+ await p.getByRole('button',{name:'Write a Review',exact:true}).click();
+ await p.locator('#star-rating [data-rating="5"]').click();await p.locator('#review_body').fill('Temporary migration validation review, removed automatically after verification.');
+ await p.locator('#reviewer_name').fill('Migration validation');await p.locator('#reviewer_email').fill('migration-validation@example.invalid');
+ await p.locator('#review_media').setInputFiles({name:'validation.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aX1EAAAAASUVORK5CYII=','base64')});
+ let submitted,uploaded;
+ await p.route('**/api/review-media',async route=>{const r=await route.fetch();uploaded=await r.json();await route.fulfill({response:r});});
+ await p.route('**/api/reviews',async route=>{const r=await route.fetch();submitted={status:r.status(),data:await r.json()};await route.fulfill({response:r});});
+ const responsePromise=p.waitForResponse(r=>r.url()===base+'/api/reviews'&&r.request().method()==='POST');
+ await p.getByRole('button',{name:'Submit Review',exact:true}).click();
+ await responsePromise;const media=uploaded,response=submitted,result=response.data;assert.equal(response.status,200);assert.ok(result.review_id);
+ fs.writeFileSync('.private/feedback-fixture.json',JSON.stringify({review_id:result.review_id,media_url:media.url,email:'migration-validation@example.invalid'}));
+ await p.waitForLoadState('domcontentloaded');
+ const newsletter=await ctx.request.post(base+'/custom-api.php?action=subscribe_newsletter',{headers:{Origin:base},form:{email:'migration-validation@example.invalid'}});assert.equal((await newsletter.json()).status,200);
+ const brand=await ctx.request.get(base+'/custom-api.php?action=products_by_collection&collections=cursive&per_page=10');const products=(await brand.json()).data;assert.ok(products.total>0);assert.ok(products.products.every(p=>p.brand_slugs.includes('cursive')));
+ const publicReviews=await (await ctx.request.get(base+'/custom-api.php?action=reviews&per_page=5')).json();assert.ok(publicReviews.reviews.some(r=>r.id===result.review_id));assert.equal(JSON.stringify(publicReviews).includes('migration-validation@example.invalid'),false);
+ assert.deepEqual(errors,[]);console.log(JSON.stringify({review_pagination:true,review_submission:true,media_upload:true,review_email_private:true,newsletter_saved:true,brand_products:products.total,errors}));
+ await b.close();
+})().catch(e=>{console.error(e.message);process.exit(1)});

@@ -1,0 +1,13 @@
+{
+  "name": "d4u-medusa",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix apps/backend run dev",
+    "dev:storefront": "npm --prefix apps/storefront run dev",
+    "build:backend": "npm --prefix apps/backend run build",
+    "test": "npm --prefix apps/backend run test:payments"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0"
+  }
+}

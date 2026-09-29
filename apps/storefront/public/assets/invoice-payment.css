@@ -1,0 +1,20 @@
+/* Keep the reference page's layout; replace only its WordPress gateway controls. */
+.address-select{position:relative;width:100%;margin-bottom:0}
+#order_review select.address-native-select{position:absolute!important;opacity:0!important;pointer-events:none!important;width:1px!important;height:1px!important;padding:0!important;margin:0!important;overflow:hidden!important}
+#order_review .address-select-toggle{width:100%;min-height:52px;display:flex;justify-content:space-between;align-items:center;background:#fff!important;color:#333!important;border:1px solid #776565!important;border-radius:2px!important;padding:12px 16px!important;font:inherit!important;font-size:14px!important;text-align:left;cursor:pointer}
+.address-select-toggle:after{content:'⌄';margin-left:10px}.address-select-toggle:focus-visible{outline:2px solid #111;outline-offset:2px}
+.address-select-panel{position:absolute;top:100%;left:0;right:0;z-index:100;background:white;border:1px solid #aaa;box-shadow:0 4px 12px #0002;padding:8px;box-sizing:border-box}
+#order_review .address-select-panel input[type=search]{width:100%;height:44px;margin:0 0 6px!important;padding:8px 10px!important;border:1px solid #aaa!important;border-radius:2px!important;font-size:16px!important;box-sizing:border-box}
+.address-select-options{max-height:200px;overflow-y:auto;overscroll-behavior:contain}
+#order_review .address-select-option{display:block;width:100%;background:white!important;border:0!important;border-radius:0!important;color:#333!important;text-align:left;padding:10px!important;font:inherit!important;font-size:14px!important;min-height:42px;cursor:pointer}
+#order_review .address-select-option:hover,#order_review .address-select-option.is-focused,#order_review .address-select-option[aria-selected=true]{background:#e9eff7!important;color:#111!important}
+.address-select-options p{padding:8px;margin:0}.address-select-toggle[aria-invalid=true]{outline:2px solid #b32d2e}
+#order_review select:not(.select2-hidden-accessible){display:block!important;position:static!important;width:100%;height:3.8em;margin-bottom:-4px!important;padding:12px 30px;font-size:14px;border:1px solid #776565!important;background:white;border-radius:2px!important;color:#999;clip:auto!important;appearance:auto!important}
+#order_review .billing_data_div[hidden]{display:none!important}#order_review [hidden]{display:none!important}
+#order_review #place_order{display:block!important;float:none!important;width:calc(75% + 33px)!important;max-width:100%;height:55px;margin:26px 0 0!important;border:0;border-radius:3px!important;background:#ffc439!important;color:#003087!important;font-size:22px!important;font-weight:700;letter-spacing:-.4px;padding:8px 20px!important;cursor:pointer;line-height:1.4}#order_review #place_order.invoice-card-button{background:#111!important;color:white!important;font-size:17px!important;letter-spacing:0}#order_review #place_order:disabled{opacity:.6;cursor:wait}
+#invoice-payment-status{margin:16px 4px;font-size:16px;color:#a22;white-space:pre-line}#invoice-payment-status:empty{display:none}#invoice-paid{padding:24px 0;border-top:1px solid #ddd;margin-top:25px;font-size:20px}#invoice-paid strong{display:block;font-size:28px;margin-bottom:12px;color:#146c43}#oceanpayment-element{min-height:131px}#order_review input:invalid:focus{outline:2px solid #ba2020}#order_review .invoice-field-error{border-color:#b42318!important}
+@media(max-width:767px){#order_review #place_order{width:100%!important;margin:20px 0 0!important}#order_review select:not(.select2-hidden-accessible){height:3.8em;padding:10px 30px}#invoice-payment-status{font-size:14px}}
+
+#invoice-card-loading{font-size:13px;color:#666;margin:8px 0}#invoice-card-loading[hidden]{display:none!important}
+
+#invoice-applepay-unavailable,#invoice-applepay-help{font-size:13px;line-height:1.5;margin:10px 0;color:#555}#oceanpayment-applepayelement iframe{display:block;width:100%;min-height:55px}#order_review #place_order[hidden]{display:none!important}

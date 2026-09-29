@@ -41,5 +41,29 @@ WooCommerce order-list/detail, batch status and Respond/CRM creation compatibili
 3. Run `npm run dev:backend` and `npm run dev:storefront`; the backend requires PostgreSQL. Production also requires Redis.
 4. Run `npm test` and `npm run build:backend`. Browser smoke checks are in `scripts/check-pages.cjs` and `scripts/check-mobile.cjs`.
 
+### Generated storefront files
+
+Captured page templates (the hash-named HTML files), `shell.html`, `routes.json`,
+and `invoice-payment.html` are generated migration artifacts and are ignored by
+Git. Downloaded fonts, WordPress assets, invoice reference assets, and the
+Masonry / ImagesLoaded vendor copies are also ignored. The handwritten
+`templates/invoice-builder.html` and application JavaScript / CSS remain source files.
+
+Before starting or packaging a fresh checkout, restore the private migration
+inputs (`.private/rendered/manifest.json` and its captured HTML files, plus
+`.private/invoice-reference.html`) and install Python's `requests` and
+`beautifulsoup4` packages. Run these commands from the repository root:
+
+```sh
+python scripts/prepare-storefront.py
+python scripts/prepare-invoice-template.py
+python scripts/prepare-parity-assets.py
+```
+
+Preparation downloads missing assets from the source sites; those sites must be
+reachable. The final parity pass also localizes fonts in the invoice template.
+These files are required at runtime and must still be included in deployment
+packages. `npm install` and the backend build do not generate them.
+
 `scripts/deploy-test.py --build --upload-only` packages built application files and writes the dedicated test configuration. It does not restart the application services. Restart only the two named application services after uploading; use `scripts/configure-nginx.py` only for this test virtual host. Initial imports, metadata refreshes and history imports are separate operations; a history reimport replaces imported review content and must not be run after new reviews are accepted without reconciliation.
 # d4u_medusal

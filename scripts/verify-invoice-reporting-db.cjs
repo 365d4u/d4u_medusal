@@ -1,0 +1,55 @@
+// Run from backend .medusa/server. All schema and fixture writes roll back.
+require('dotenv').config({path:'../../.env',quiet:true})
+const fs=require('fs'),assert=require('assert/strict'),{Client}=require('pg'),{randomUUID}=require('crypto')
+const {invoiceReportCTE}=require('./src/lib/invoice-reporting')
+;(async()=>{
+ const db=new Client({connectionString:process.env.DATABASE_URL});await db.connect()
+ try{
+  await db.query('BEGIN')
+  const migration=fs.readFileSync(process.argv[2],'utf8').replace(/^BEGIN;\s*/,'').replace(/COMMIT;\s*$/,'')
+  await db.query(migration)
+  const suffix=randomUUID(),collection='paycol_report_'+suffix,payment='pay_report_'+suffix,session='payses_report_'+suffix,number='987654321',order='order_report_'+suffix
+  await db.query("INSERT INTO payment_collection(id,currency_code,amount,raw_amount,status) VALUES($1,'usd',10,'{\"value\":\"10\",\"precision\":20}','not_paid')",[collection])
+  const payload={order_id:order,display_id:Number(number),payment_collection_id:collection,amount:10,currency_code:'usd',token:'DO_NOT_LOG_SECRET',note:'Original',created_by:'invoice-report-fixture'}
+  await db.query("INSERT INTO d4u_content_record(id,key,payload) VALUES($1,$2,$3)",['report_'+suffix,'invoice:'+number,JSON.stringify(payload)])
+  await db.query("UPDATE d4u_content_record SET payload=payload||'{\"note\":\"Changed\",\"payment_version\":1}'::jsonb WHERE key=$1",['invoice:'+number])
+  await db.query("INSERT INTO payment_session(id,currency_code,amount,raw_amount,provider_id,payment_collection_id,status,data,context) VALUES($1,'usd',10,'{\"value\":\"10\",\"precision\":20}','pp_oceanpayment_oceanpayment',$2,'pending',$3,'{}')",[session,collection,JSON.stringify({seal:'DO_NOT_LOG_SECRET',fields:{card_number:'4111111111111111'},binding:{session_id:session}})])
+  await db.query("INSERT INTO payment(id,currency_code,amount,raw_amount,provider_id,payment_collection_id,payment_session_id,data,captured_at) VALUES($1,'usd',10,'{\"value\":\"10\",\"precision\":20}','pp_oceanpayment_oceanpayment',$2,$3,'{}','2026-09-24T00:00:00Z')",[payment,collection,session])
+  for(const [id,amount,at] of [['a',4,'2026-09-23T15:59:59Z'],['b',6,'2026-09-23T16:00:00Z'],['c',10,'2026-09-24T01:00:00Z']])await db.query('INSERT INTO capture(id,payment_id,amount,raw_amount,created_at) VALUES($1,$2,$3,$4,$5)',[suffix+id,payment,amount,JSON.stringify({value:String(amount),precision:20}),at])
+  await db.query('INSERT INTO d4u_content_record(id,key,payload) VALUES($1,$2,$3)',['receipt_'+suffix,'ocean-receipt:'+session,JSON.stringify({payment_id:'gateway-fixture',order_number:session,payment_status:'1',signValue:'DO_NOT_LOG_SECRET',card_number:'4111111111111111'})])
+  const report=await db.query(invoiceReportCTE+" SELECT paid_at,(paid_at AT TIME ZONE 'Asia/Shanghai')::date::text AS day,payload->>'amount' AS amount FROM invoice_report WHERE payload->>'display_id'=$1",[number])
+  assert.equal(report.rows.length,1);assert.equal(report.rows[0].day,'2026-09-24');assert.equal(report.rows[0].amount,'10');assert.equal(report.rows[0].paid_at.toISOString(),'2026-09-23T16:00:00.000Z')
+  await db.query('INSERT INTO d4u_content_record(id,key,payload) VALUES($1,$2,$3)',['notify_'+suffix,'paid-notification:test:'+order+':queue',JSON.stringify({order_id:order,channel:'queue',queue:'order_paid_test',state:'pending',attempts:0,secret:'DO_NOT_LOG_SECRET'})])
+  await db.query(`UPDATE d4u_content_record SET payload=payload||jsonb_build_object('state','sent','attempts',1,'sent_at',now()) WHERE id=$1`,['notify_'+suffix])
+  const audit=await db.query('SELECT * FROM d4u_invoice_audit WHERE invoice_number=$1 ORDER BY id',[number])
+  assert.ok(audit.rows.some(r=>r.before_value?.note==='Original'&&r.after_value?.note==='Changed'))
+  assert.ok(audit.rows.some(r=>r.source==='ocean_receipt'&&r.after_value.payment_status==='1'))
+  assert.ok(audit.rows.some(r=>r.source==='payment_notification'&&r.before_value?.state==='pending'&&r.after_value.state==='sent'))
+  assert.doesNotMatch(JSON.stringify(audit.rows),/DO_NOT_LOG_SECRET|4111111111111111/)
+  const identity='feishu_audit_'+suffix,nativeActor='user_audit_'+suffix
+  await db.query('INSERT INTO d4u_content_record(id,key,payload) VALUES($1,$2,$3),($4,$5,$6)',[
+   'seen_'+suffix,'feishu-seen:'+identity,JSON.stringify({user:{name:'Verified staff name'}}),
+   'binding_'+suffix,'feishu-binding:'+identity,JSON.stringify({user_id:nativeActor,enabled:true})])
+  for(const actor of [identity,nativeActor,'payment_link'])await db.query(`INSERT INTO d4u_invoice_audit(invoice_number,source,operation,actor,after_value) VALUES($1,'invoice_activity','SUCCEEDED',$2,'{}')`,[number,actor])
+  await db.query(`UPDATE d4u_content_record SET payload=jsonb_set(payload,'{user,name}','"Renamed staff"') WHERE key=$1`,['feishu-seen:'+identity])
+  const actors=await db.query(`SELECT actor,actor_name_snapshot FROM d4u_invoice_audit WHERE invoice_number=$1 AND actor=ANY($2)`,[number,[identity,nativeActor,'payment_link']])
+  assert.equal(actors.rows.find(r=>r.actor===identity).actor_name_snapshot,'Verified staff name')
+  assert.equal(actors.rows.find(r=>r.actor===nativeActor).actor_name_snapshot,'Verified staff name')
+  assert.equal(actors.rows.find(r=>r.actor==='payment_link').actor_name_snapshot,'User')
+  // Simulate a legacy invoice that existed before detailed tracking.
+  await db.query('DELETE FROM d4u_invoice_audit WHERE invoice_number=$1',[number])
+  await db.query(`INSERT INTO d4u_invoice_audit(invoice_number,source,operation,occurred_at) VALUES($1,'history','BASELINE',now()+interval '1 day')`,[number])
+  const recovery=fs.readFileSync(process.argv[3],'utf8').replace(/^BEGIN;\s*/,'').replace(/COMMIT;\s*$/,'')
+  await db.query(recovery)
+  const first=await db.query('SELECT count(*) FROM d4u_invoice_audit WHERE invoice_number=$1',[number])
+  await db.query(recovery)
+  const recovered=await db.query('SELECT * FROM d4u_invoice_audit WHERE invoice_number=$1 ORDER BY occurred_at DESC,id DESC',[number])
+  assert.equal(Number(first.rows[0].count),recovered.rows.length)
+  assert.ok(recovered.rows.filter(r=>r.operation==='CAPTURED').length===3)
+  assert.ok(recovered.rows.some(r=>r.source==='payment_notification'&&r.operation==='SENT'))
+  assert.ok(recovered.rows.some(r=>r.source==='d4u_content_record'&&r.operation==='CREATED'&&r.actor==='invoice-report-fixture'))
+  assert.ok(recovered.rows.filter(r=>r.operation!=='BASELINE').every(r=>r.provenance==='recovered'&&r.before_value===null))
+  assert.doesNotMatch(JSON.stringify(recovered.rows),/DO_NOT_LOG_SECRET|4111111111111111/)
+  console.log(JSON.stringify({beijing_boundary:true,partial_capture_completion:true,no_duplicate_invoice_total:true,audit_before_after:true,verified_receipt_audit:true,notification_transitions:true,historical_recovery:true,recovery_idempotent:true,no_fabricated_before_values:true,public_actor_user:true,feishu_direct_and_native_names:true,name_preserved_after_rename:true,no_payment_secrets:true,rolled_back:true}))
+ }finally{await db.query('ROLLBACK');await db.end()}
+})().catch(e=>{console.error(e.message);process.exit(1)})
