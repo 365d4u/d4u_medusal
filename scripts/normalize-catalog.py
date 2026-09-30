@@ -7,6 +7,7 @@ import re
 from urllib.parse import unquote
 from pathlib import Path
 import phpserialize
+from catalog_description import readable_description
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = Path(os.environ.get('EXPORT_DIR', str(ROOT / '.private')))
@@ -95,6 +96,10 @@ for p in data['posts']:
     products.append({'legacy_id': int(pid), 'title': html.unescape(p['post_title']), 'handle': p['post_name'] or 'wp-' + pid, 'status': 'published' if p['post_status']=='publish' else 'draft', 'description': html.unescape(p['post_content']), 'thumbnail': public['image'], 'images': list(dict.fromkeys([image(m.get('_thumbnail_id', ''))] + [g['url'] for g in gallery if g['type']=='image'])), 'options': [{'title': key, 'values': values} for key,values in options.items()], 'variants': normalized_variants, 'legacy': public})
 
 for product in products:
+    original = product['description']
+    product['description'] = readable_description(original)
+    if product['description'] != original:
+        product['description_migration'] = {'html': original, 'text': product['description']}
     previous = product['handle']
     canonical = re.sub(r'[^\w-]+', '-', unquote(previous)).replace('_','-').lower()
     canonical = re.sub(r'-+', '-', canonical).strip('-') or 'wp-' + str(product['legacy_id'])

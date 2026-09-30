@@ -31,7 +31,7 @@ async function main(){
   assert.match(await page.locator('#variant-price').innerText(),/159/);
   await page.locator('[data-product-tab="shipping"]').click();assert.ok(await page.locator('#panel-shipping').isVisible());
   await page.locator('#gallery-main').evaluate(img=>img.decode());
-  await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await page.screenshot({path:path.join(dir,`product-${width}.png`),fullPage:true});
+  await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));await page.screenshot({path:path.join(dir,`product-${width}.png`)});
   report.push({width,page:'product',text:await page.locator('.d4u-product-info').innerText(),errors:[...errors]});
   await page.locator('#add-to-bag').evaluate(el=>el.scrollIntoView({block:'center'}));await page.locator('#add-to-bag').click();await page.locator('#d4u-cart-drawer[open]').waitFor();
   assert.match(await page.locator('#d4u-cart-drawer').innerText(),/159/);
@@ -44,7 +44,7 @@ async function main(){
   await page.waitForFunction(()=>!document.querySelector('[data-provider="pp_paypal_paypal"]')?.disabled,{},{timeout:45000});
   assert.ok(await page.locator('#shipping-options input:checked').count());
   assert.equal(await page.locator('[data-line-total]').first().innerText(),'$159.00');
-  const overflowing=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,10).map(e=>({tag:e.tagName,css:e.className,right:e.getBoundingClientRect().right})));
+  const overflowing=await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(e=>e.getBoundingClientRect().right>innerWidth+1).slice(0,10).map(e=>({tag:e.tagName,css:e.getAttribute('class'),parent:e.parentElement.outerHTML.slice(0,500),right:e.getBoundingClientRect().right})));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,`Checkout ${width}px must fit the viewport: ${JSON.stringify(overflowing)}`);
   await page.evaluate(()=>scrollTo({top:0,behavior:'instant'}));
   await page.screenshot({path:path.join(dir,`checkout-${width}.png`),fullPage:true});

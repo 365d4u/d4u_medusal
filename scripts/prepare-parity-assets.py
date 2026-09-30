@@ -29,7 +29,7 @@ for f in (ROOT/'apps/storefront/templates').glob('*.html'):
     s=s.replace('action=products_by_date&per_page=12','action=products_by_date&context=d365_home_fresh_drops&per_page=12')
     if f.name=='8a5edab282632443.html':
         s=re.sub(r'action=products_by_date(?!&context=d365_home_fresh_drops)', 'action=products_by_date&context=d365_home_fresh_drops',s)
-    s=s.replace('/assets/storefront.css"','/assets/storefront.css?v=20260929"').replace('/assets/storefront.js"','/assets/storefront.js?v=20260929"')
-    if '/assets/storefront-parity.css' not in s:s=s.replace('</head>','<link rel="stylesheet" href="/assets/storefront-parity.css?v=20260929"/></head>')
+    s=re.sub(r'(/assets/storefront(?:-parity)?\.(?:css|js))(?:\?[^"\s>]*)?',r'\1?v=20260929-account-en1',s)
+    if '/assets/storefront-parity.css' not in s:s=s.replace('</head>','<link rel="stylesheet" href="/assets/storefront-parity.css?v=20260929-account-en1"/></head>')
     if s!=old:f.write_text(s,encoding='utf8');count+=1
 print('Localized',len(urls),'source fonts; updated',count,'templates')

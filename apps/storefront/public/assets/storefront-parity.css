@@ -1,7 +1,10 @@
 /* Components owned by the Medusa storefront; source theme typography is retained. */
 .d4u-main a.d4u-button,.d4u-button:visited{color:#fff;background:#111}
-.d4u-cart-link{display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1}
-.d4u-cart-link .wc-block-mini-cart__icon{width:22px;height:22px}
+/* Match the source mini-cart button, including its font-relative hit area.
+   The icon's standalone Woo rule has a negative margin; the source button resets it. */
+.nav_cart_icon{display:inline-flex;align-items:center;width:auto!important;height:auto;flex:0 0 auto;line-height:1}
+.nav_cart_icon .d4u-cart-link{display:flex;align-items:center;justify-content:center;box-sizing:content-box;width:auto!important;height:auto!important;padding:.5em;margin:0;border:0;background:transparent;color:inherit;font:inherit;line-height:1;text-decoration:none}
+.nav_cart_icon .d4u-cart-link .wc-block-mini-cart__icon{display:block;width:1.5em!important;height:1.5em!important;max-width:none;margin:0;flex-shrink:0}
 .d4u-product-info h1{margin-bottom:10px}
 .d4u-product-tags{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
 .d4u-product-info .d4u-tag{color:#b36b00;font-size:13px}
@@ -50,6 +53,8 @@ body:has(#checkout-address) #myshop-recent-orders-container,body:has(#checkout-a
 .d4u-main .d4u-payment-method{width:100%;border-radius:4px;padding:14px}
 .d4u-main .d4u-payment-method.d4u-paypal{margin:0;color:#003087;font-weight:700}
 .d4u-main button:disabled{cursor:not-allowed}
+.d4u-form-message{font-size:14px;color:#8d2525;line-height:1.5}
+.d4u-main input[aria-invalid=true]{border-color:#8d2525}
 #d4u-cart-drawer{position:fixed;inset:0 0 0 auto;margin:0;width:min(450px,100vw);height:100dvh;max-height:100dvh;max-width:100vw;border:0;padding:25px;box-sizing:border-box;font-family:'DM Sans',sans-serif;color:#111}
 #d4u-cart-drawer::backdrop{background:#0006}
 .d4u-drawer-heading{display:flex;align-items:center;justify-content:space-between;gap:20px}

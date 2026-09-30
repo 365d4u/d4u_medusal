@@ -160,10 +160,29 @@
       $('#ocean-submit')?.remove();const button=document.createElement('button');button.id='ocean-submit';button.textContent='Pay securely';button.onclick=()=>{if(version!==checkoutVersion||!checkoutReady)return;sessionStorage.setItem('d4u_ocean_return','1');window.Oceanpayment.checkout(data.fields);};$('#oceanpayment-element').after(button);
     }
   }
-  for(const [id,route] of [['login-form','login'],['register-form','register']])$('#'+id)?.addEventListener('submit',async event=>{
-    event.preventDefault();const button=event.target.querySelector('button');button.disabled=true;
-    try{await api('/api/account/'+route,Object.fromEntries(new FormData(event.target)));location.href='/my-account/';}catch(error){message('#account-message',error);}finally{button.disabled=false;}
-  });
+  for(const [id,route] of [['login-form','login'],['register-form','register']]){
+    const form=$('#'+id);if(!form)continue;
+    // Native validation bubbles use the browser's locale, not the page language.
+    // Use accessible English feedback while keeping the same input constraints.
+    form.noValidate=true;
+    const status=document.createElement('p');status.id=id+'-message';status.className='d4u-form-message';status.setAttribute('role','alert');form.append(status);
+    const fields=[...form.querySelectorAll('input')];
+    const labels={first_name:'first name',last_name:'last name',email:'email address',password:'password'};
+    const clearField=field=>{field.removeAttribute('aria-invalid');field.removeAttribute('aria-describedby');};
+    fields.forEach(field=>field.addEventListener('input',()=>{clearField(field);status.textContent='';}));
+    form.addEventListener('submit',async event=>{
+      event.preventDefault();status.textContent='';fields.forEach(clearField);
+      for(const field of fields){
+        let error='';
+        if(field.required&&!(field.type==='password'?field.value:field.value.trim()))error=`Please enter your ${labels[field.name]||'details'}.`;
+        else if(field.type==='email'&&field.validity.typeMismatch)error='Please enter a valid email address.';
+        else if(field.minLength>0&&field.value.length<field.minLength)error=`Use a password with at least ${field.minLength} characters.`;
+        if(error){status.textContent=error;field.setAttribute('aria-invalid','true');field.setAttribute('aria-describedby',status.id);field.focus();return;}
+      }
+      const button=form.querySelector('button');button.disabled=true;
+      try{await api('/api/account/'+route,Object.fromEntries(new FormData(form)));location.href='/my-account/';}catch(error){status.textContent=error.message;}finally{button.disabled=false;}
+    });
+  }
   if($('#account-content'))api('/api/account').then(async({customer})=>{
     $('#account-content').innerHTML=`<h2>Welcome, ${escape(customer.first_name||customer.email)}</h2><p>${escape(customer.email)}</p><button id="sign-out">Sign out</button><div id="account-orders"></div>`;
     $('#sign-out').onclick=async()=>{await api('/api/account/logout',{});location.reload();};

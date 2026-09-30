@@ -132,7 +132,7 @@ app.post('/api/wishlist',async(req,res)=>{
   const token=cookie(req,'d4u_customer');if(!token)return res.status(401).json({message:'Please sign in to save your wishlist'})
   res.json(await medusa('/store/customers/me/wishlist',{method:'POST',token,body:{product_id:String(req.body.product_id)}}))
 })
-app.get('/api/config',async(req,res)=>res.json({...(await legacy({action:'store'})),payment_policy:await medusa('/store/payment-policy'),paypal_client_id:process.env.PAYPAL_CLIENT_ID||null,checkout_enabled:process.env.CHECKOUT_ENABLED==='true',applepay_enabled:process.env.APPLEPAY_ENABLED==='true',ocean_sandbox:process.env.OCEAN_ENVIRONMENT!=='production'}))
+app.get('/api/config',async(req,res)=>{const policy=await medusa('/store/payment-policy');res.set('Cache-Control','no-store');res.json({...(await legacy({action:'store'})),payment_policy:policy,checkout_enabled:process.env.CHECKOUT_ENABLED==='true',applepay_enabled:policy.applepay_enabled,ocean_sandbox:policy.ocean_sandbox})})
 app.get('/api/cart',async(req,res)=>res.json({cart:await cart(req,res,false)}))
 app.post('/api/cart/items',async(req,res)=>{
   const quantity=Number(req.body.quantity||1)
@@ -165,7 +165,6 @@ app.post('/api/cart/payment',async(req,res)=>{
   if(process.env.CHECKOUT_ENABLED!=='true') return res.status(503).json({message:'Payment is not yet enabled on this test store.'})
   const c=await cart(req,res)
   const allowed=['pp_paypal_paypal','pp_oceanpayment_oceanpayment','pp_oceanpayment-applepay_oceanpayment']
-  if(String(req.body.provider_id).includes('applepay')&&process.env.APPLEPAY_ENABLED!=='true')return res.status(400).json({message:'Apple Pay is not enabled on this test domain.'})
   if(!allowed.includes(req.body.provider_id))return res.status(400).json({message:'Unsupported payment method'})
   if(!c.shipping_methods?.length)return res.status(400).json({message:'Please confirm your delivery method first.'})
   const {payment_collection}=await medusa('/store/payment-collections',{method:'POST',body:{cart_id:c.id}})

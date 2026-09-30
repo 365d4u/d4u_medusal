@@ -17,6 +17,9 @@ server {
     ssl_certificate_key /etc/letsencrypt/live/testmedusa.365d4u.com/privkey.pem;
     client_max_body_size 12m;
     add_header X-Robots-Tag "noindex, nofollow" always;
+    # Medusa reserves /admin/* for APIs; only the bare entry opens the dashboard.
+    location = /admin { return 302 /app/; }
+    location = /admin/ { return 302 /app/; }
     location = /app/invoices { return 302 /invoices/new/?feishu=1; }
     location = /app/invoices/ { return 302 /invoices/new/?feishu=1; }
     location = /.well-known/apple-developer-merchantid-domain-association {

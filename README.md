@@ -13,7 +13,8 @@ Migration from the existing WordPress / WooCommerce store to a standalone Medusa
 ## Test environment
 
 - Storefront: https://testmedusa.365d4u.com/
-- Medusa Admin: https://testmedusa.365d4u.com/app/
+- Medusa Admin: https://testmedusa.365d4u.com/admin/ (redirects to `/app/`).
+- Payment connections: https://testmedusa.365d4u.com/app/store-settings (administrator access required).
 - Runtime: Medusa 2.18.0, Node.js 20, PostgreSQL and dedicated Redis.
 - Deployment: `/var/www/d4u_medusa`; services `d4u-medusa-backend`, `d4u-medusa-storefront`, `d4u-medusa-redis`.
 - Local administrator access is in `.private/admin-access.json` (ignored by version control).
@@ -35,6 +36,12 @@ See `docs/source-audit.md` for verified findings and migration coverage.
 WooCommerce order-list/detail, batch status and Respond/CRM creation compatibility routes were deployed to the Medusa production and test sites on 2026-09-26. Existing Medusa order numbers remain unchanged. See [compatibility configuration, historical data enrichment and rollout](docs/woocommerce-compatibility.md); the original WordPress domain and external callers have not been switched.
 
 ## Development and verification
+
+The Nginx deployment template also supports `/admin` and `/admin/` as dashboard
+entry aliases, redirecting to `/app/`. All `/admin/*` API routes keep their
+existing behavior. Apply the updated virtual-host configuration to enable these
+aliases on an existing deployment; changing the local template alone does not
+update a running server.
 
 1. Use Node.js 20 and run `npm install` at the root and in both `apps/backend` and `apps/storefront`.
 2. Configure ignored `.env` files from the examples. Never commit credentials, raw customer exports or payment receipts.
